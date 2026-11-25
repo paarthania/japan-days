@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#FBF8F9">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Japan Days">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Japan Days</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one-day-at-a-time phone app. Sticky day bar with arrows + 15-dot strip, then the day: tickets button, hotel, time rail, extras. Tickets open full-screen on white. */
+:root{
+  --bg:#FBF8F9; --surface:#FFFFFF; --line:#E9E1E5; --ink:#1D2030; --muted:#636679;
+  --tokyo:#3553A0; --kyoto:#4F7A3A; --osaka:#C9466E;
+  --tokyo-soft:#E8EDF8; --kyoto-soft:#EAF1E4; --osaka-soft:#FBE8EE;
+  --ticket-bg:#FFFFFF; --ticket-ink:#111317; --danger:#B23A3A; --now:#E0902B;
+  --display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#14161E; --surface:#1C1F2A; --line:#2D3140; --ink:#ECEAF1; --muted:#A3A6B8;
+  --tokyo:#8EA6E8; --kyoto:#9CC584; --osaka:#F08CAB;
+  --tokyo-soft:#222B44; --kyoto-soft:#233225; --osaka-soft:#3A2230; --danger:#EE8080; --now:#F0B060; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#14161E; --surface:#1C1F2A; --line:#2D3140; --ink:#ECEAF1; --muted:#A3A6B8;
+  --tokyo:#8EA6E8; --kyoto:#9CC584; --osaka:#F08CAB;
+  --tokyo-soft:#222B44; --kyoto-soft:#233225; --osaka-soft:#3A2230; --danger:#EE8080; --now:#F0B060; color-scheme:dark }
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+body[data-city="tokyo"]{--city:var(--tokyo);--city-soft:var(--tokyo-soft)}
+body[data-city="kyoto"]{--city:var(--kyoto);--city-soft:var(--kyoto-soft)}
+body[data-city="osaka"]{--city:var(--osaka);--city-soft:var(--osaka-soft)}
+.wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.25}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--city);outline-offset:2px}
+.muted{color:var(--muted)}
+
+/* day bar */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar .wrap{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:8px;padding-block:10px 6px}
+.arrow{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.arrow:disabled{opacity:.3;cursor:default}
+.arrow svg{width:20px;height:20px}
+.when{text-align:center;min-width:0}
+.when .d{font-family:var(--display);font-weight:900;font-size:1.35rem;line-height:1.1}
+.when .s{font-size:.78rem;color:var(--muted);font-weight:600;letter-spacing:.04em}
+.when .s b{color:var(--city)}
+.dots{display:flex;justify-content:center;gap:5px;padding-block:4px 10px}
+.dot{width:16px;height:16px;padding:0;border:0;background:none;display:grid;place-items:center}
+.dot i{display:block;width:7px;height:7px;border-radius:50%;background:var(--line)}
+.dot[data-c="tokyo"] i{background:color-mix(in srgb,var(--tokyo) 35%,transparent)}
+.dot[data-c="kyoto"] i{background:color-mix(in srgb,var(--kyoto) 35%,transparent)}
+.dot[data-c="osaka"] i{background:color-mix(in srgb,var(--osaka) 35%,transparent)}
+.dot[aria-current="true"] i{width:10px;height:10px;background:var(--city)}
+.dot.today i{box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--now)}
+
+main{padding-block:14px 48px;display:flex;flex-direction:column;gap:16px}
+.status{font-size:.82rem;font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted)}
+.status button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-weight:600;font-size:.8rem}
+.title h1{font-size:1.55rem;font-weight:900}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:.74rem;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--city-soft);color:var(--city)}
+.intro{margin:0;color:var(--muted);font-size:.92rem}
+
+.tk{display:flex;gap:8px}
+.tk-open{flex:1;display:flex;align-items:center;gap:12px;border:0;border-radius:14px;padding:14px 16px;background:var(--city);color:var(--bg);text-align:left}
+.tk-open svg{width:28px;height:28px;flex:none}
+.tk-open b{font-family:var(--display);font-size:1.05rem;display:block}
+.tk-open span{font-size:.8rem;opacity:.85}
+.tk-add{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:0 16px;font-weight:600;font-size:.85rem}
+.tk-note{font-size:.8rem;color:var(--muted);margin:-8px 0 0}
+
+.hotel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center}
+.hotel>div{flex:1;min-width:0}
+.hotel .k{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.hotel .n{font-weight:700}
+.hotel .a{font-family:var(--display);font-size:.95rem;overflow-wrap:anywhere}
+.hotel button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;font-size:.8rem;font-weight:600;flex:none}
+
+.rail{list-style:none;margin:0;padding:0}
+.rail li{display:grid;grid-template-columns:56px 1fr;gap:10px}
+.rail .h{font-size:.8rem;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;padding-top:1px}
+.rail .w{border-left:2px solid var(--line);padding:0 0 14px 14px;position:relative;font-size:.93rem}
+.rail .w::before{content:"";position:absolute;left:-7px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--city)}
+.rail li.move .w{color:var(--muted);font-size:.86rem}
+.rail li.move .w::before{width:8px;height:8px;left:-5px;top:7px;background:var(--muted);border-color:var(--muted)}
+.rail li.now .h{color:var(--now)}
+.rail li.now .w::before{background:var(--now);border-color:var(--now);box-shadow:0 0 0 4px color-mix(in srgb,var(--now) 25%,transparent)}
+.rail li:last-child .w{border-left-color:transparent}
+
+.food{background:var(--city-soft);border-radius:12px;padding:12px 14px;font-size:.9rem}
+.food b:first-child{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--city)}
+details{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+summary{padding:12px 14px;font-weight:700;font-family:var(--display);list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--body);color:var(--muted);font-size:1.2rem}
+details[open] summary::after{content:"−"}
+details ul{margin:0;padding:0 14px 12px;list-style:none;display:flex;flex-direction:column;gap:10px}
+details li{font-size:.9rem}
+details li span{color:var(--muted)}
+.foot{display:flex;gap:8px;flex-wrap:wrap}
+.foot button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:600;font-size:.85rem}
+
+/* overlays */
+.ov{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column}
+.ov[hidden]{display:none!important}
+.tv{background:var(--ticket-bg);color:var(--ticket-ink);color-scheme:light}
+.ov-top{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 10px) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid #E6E6EA}
+.ov-top .lbl{flex:1;min-width:0}
+.ov-top .lbl b{display:block;font-family:var(--display);font-size:1.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-top .lbl span{font-size:.8rem;color:#5C5F6E}
+.ib{border:1px solid #E0E0E6;background:#fff;color:#111317;border-radius:10px;padding:8px 12px;font-weight:600;font-size:.85rem}
+.slides{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;min-height:0}
+.slides::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;padding:16px;min-width:0}
+.slide img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:auto}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;color:#5C5F6E}
+.ov-bot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(16px,env(safe-area-inset-left,0px));border-top:1px solid #E6E6EA}
+.sdots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;flex:1}
+.sdots i{width:8px;height:8px;border-radius:50%;background:#D5D6DD}
+.sdots i.on{background:#111317}
+.edit{padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));border-top:1px solid #E6E6EA;display:grid;gap:10px;background:#F6F6F8}
+.edit label{font-size:.75rem;font-weight:700;color:#5C5F6E;display:grid;gap:4px}
+.edit input,.edit select{font:inherit;padding:8px 10px;border:1px solid #D5D6DD;border-radius:8px;background:#fff;color:#111317}
+.edit .row{display:flex;gap:8px;flex-wrap:wrap}
+.danger{color:#B23A3A!important;border-color:#E8C4C4!important}
+
+.sheet{background:color-mix(in srgb,var(--ink) 40%,transparent);justify-content:flex-end}
+.sheet .card{background:var(--surface);color:var(--ink);border-radius:18px 18px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 18px) max(16px,env(safe-area-inset-left,0px));display:grid;gap:12px;max-width:640px;width:100%;margin:0 auto}
+.sheet label{font-size:.78rem;font-weight:700;color:var(--muted);display:grid;gap:4px}
+.sheet input,.sheet select{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.sheet .row{display:flex;gap:8px;justify-content:flex-end}
+.btn{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 16px;font-weight:700}
+.btn.primary{background:var(--city);color:var(--bg);border-color:var(--city)}
+.btn:disabled{opacity:.5}
+.msg{font-size:.85rem;color:var(--muted);min-height:1.2em;margin:0}
+.fl-card{max-height:88vh;overflow-y:auto}
+.fl-sec{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--muted);margin:14px 0 6px}
+.fl-item{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.fl-item label{cursor:pointer}
+.fl-add{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;padding:8px 0 4px}
+.fl-add input{font:inherit;font-size:.88rem;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0}
+@media (max-width:420px){.fl-add{grid-template-columns:1fr auto}.fl-add input+input{grid-column:1/2;grid-row:2}}
+.fl-item input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--city);flex:none}
+.fl-item b{display:block;font-weight:600}
+.fl-item span{font-size:.84rem;color:var(--muted)}
+.fl-item.on b{text-decoration:line-through;color:var(--muted)}
+.jp{font-family:var(--display);font-size:1.6rem;font-weight:700;line-height:1.4}
+@media (prefers-reduced-motion:no-preference){.slides{scroll-behavior:smooth}}
+/* view: tick-off + notes */
+.rail li{grid-template-columns:56px 1fr 32px}
+.ck{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);display:grid;place-items:center;padding:0;margin-top:-3px}
+.ck svg{width:14px;height:14px;opacity:0}
+.ck[aria-pressed="true"]{background:var(--city);border-color:var(--city);color:var(--bg)}
+.ck[aria-pressed="true"] svg{opacity:1}
+.rail li.done .w{color:var(--muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--muted) 60%,transparent)}
+.rail li.done .w::before{background:var(--city)}
+.start{display:flex;align-items:center;gap:10px;font-size:.9rem;margin-bottom:-4px}
+.start::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--city);flex:none;margin-left:51px}
+.start b{font-variant-numeric:tabular-nums}
+.rail .h{font-size:.74rem!important}
+.tm{display:inline-block;font-size:.74rem;font-weight:600;color:var(--now);background:color-mix(in srgb,var(--now) 14%,transparent);border-radius:999px;padding:1px 8px;margin-left:2px;white-space:nowrap;text-decoration:none}
+.notes{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:12px 14px;font-size:.9rem;white-space:pre-wrap}
+.notes b:first-child{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.titlerow{display:flex;gap:10px;align-items:flex-start}
+.titlerow h1{flex:1;min-width:0}
+.ed-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:600;font-size:.8rem;flex:none;display:flex;gap:6px;align-items:center}
+.ed-btn svg{width:14px;height:14px}
+.edited{font-size:.72rem;color:var(--muted);font-weight:600}
+
+/* edit mode */
+.ed{display:flex;flex-direction:column;gap:18px}
+.ed-bar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 96px);z-index:4;display:flex;gap:8px;align-items:center;background:var(--city-soft);border:1px solid color-mix(in srgb,var(--city) 30%,transparent);border-radius:12px;padding:8px 10px}
+.ed-bar span{flex:1;font-weight:700;font-size:.88rem;color:var(--city)}
+.ed h3{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;font-family:var(--body);color:var(--muted);margin-bottom:8px}
+.ed label{display:grid;gap:4px;font-size:.75rem;font-weight:700;color:var(--muted)}
+.ed input[type=text],.ed textarea{font:inherit;font-size:.93rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+.ed textarea{resize:vertical;min-height:44px;field-sizing:content}
+.ed-list{display:flex;flex-direction:column;gap:8px}
+.ed-row{display:grid;grid-template-columns:74px 1fr;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px}
+.ed-row.place{grid-template-columns:1fr}
+.ed-row .tools{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tb{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:5px 10px;font-size:.78rem;font-weight:600;min-height:32px}
+.tb[aria-pressed="true"]{background:var(--city-soft);color:var(--city);border-color:color-mix(in srgb,var(--city) 40%,transparent)}
+.tb.del{color:var(--danger);margin-left:auto}
+.tb:disabled{opacity:.35}
+.add-line{border:1.5px dashed var(--line);background:none;border-radius:12px;padding:10px;font-weight:700;font-size:.85rem;color:var(--city)}
+.hint{font-size:.78rem;color:var(--muted);margin:0}
+.ed-foot{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;padding-top:6px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+
+<header class="bar">
+  <div class="wrap">
+    <button class="arrow" id="prev" aria-label="Previous day"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4 6.5 10l6 6"/></svg></button>
+    <div class="when"><div class="d" id="w-d">Sun 29 Nov</div><div class="s" id="w-s">Day 1 of 15 · <b>Tokyo</b></div></div>
+    <button class="arrow" id="next" aria-label="Next day"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4l6 6-6 6"/></svg></button>
+  </div>
+  <div class="dots" id="dots" role="tablist" aria-label="Trip days"></div>
+</header>
+
+<main class="wrap" id="main">
+  <div class="status" id="status"></div>
+  <div id="view">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="title"><div class="titlerow"><h1 id="title"></h1><button class="ed-btn" id="ed-open" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L6 12.5H3.5V10z"/></svg>Edit day</button></div><div class="chips" id="chips"></div></div>
+      <div class="tk">
+        <button class="tk-open" id="tk-open"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="9" height="9" rx="1.5"/><rect x="16" y="3" width="9" height="9" rx="1.5"/><rect x="3" y="16" width="9" height="9" rx="1.5"/><path d="M16 16h3v3h-3zM22 16h3M16 22h3v3M22 22h3v3h-3"/></svg><div><b id="tk-count">Tickets</b><span id="tk-sub">Tap to show QR codes and barcodes</span></div></button>
+        <button class="tk-add" id="tk-add" hidden>+ Add</button>
+      </div>
+      <p class="tk-note" id="tk-note"></p>
+      <p class="intro" id="intro"></p>
+      <div class="hotel" id="hotel" hidden><div><div class="k" id="h-k">Tonight</div><div class="n" id="h-n"></div><div class="a" id="h-a" lang="ja"></div></div><div style="display:flex;flex-direction:column;gap:6px"><button id="h-copy">Copy address</button><button id="h-edit">Add hotel</button></div></div>
+      <div class="start" id="start" hidden></div>
+      <ol class="rail" id="rail"></ol>
+      <div class="notes" id="notes" hidden></div>
+      <div class="food" id="food" hidden></div>
+      <div id="groups" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="foot"><button id="food-btn">🍜 Food to try</button><button id="coffee-btn">☕ Coffee places</button><button id="card-btn">Allergy card</button><button id="bk-btn">Backup</button><span class="edited" id="edited"></span></div>
+    </div>
+  </div>
+  <div class="ed" id="ed" hidden></div>
+</main>
+
+<!-- ticket viewer -->
+<div class="ov tv" id="tv" hidden role="dialog" aria-modal="true" aria-label="Tickets">
+  <div class="ov-top"><div class="lbl"><b id="tv-l">Tickets</b><span id="tv-c"></span></div><button class="ib" id="tv-edit" hidden>Edit</button><button class="ib" id="tv-x">Close</button></div>
+  <div class="slides" id="slides"></div>
+  <div class="empty" id="tv-empty" hidden><b>No tickets for this day yet.</b><span id="tv-empty-s">Tap “+ Add” on the day.</span></div>
+  <div class="edit" id="edit" hidden>
+    <label>Name<input id="e-label" type="text" maxlength="80"></label>
+    <label>Day<select id="e-day"></select></label>
+    <div class="row"><button class="ib" id="e-save">Save</button><button class="ib danger" id="e-del">Delete ticket</button><button class="ib danger" id="e-del2" hidden>Tap again to delete</button></div>
+  </div>
+  <div class="ov-bot"><button class="ib" id="s-prev" aria-label="Previous ticket">‹</button><div class="sdots" id="sdots"></div><button class="ib" id="s-next" aria-label="Next ticket">›</button></div>
+</div>
+
+<!-- add sheet -->
+<div class="ov sheet" id="add" hidden role="dialog" aria-modal="true" aria-label="Add tickets">
+  <form class="card" id="add-form">
+    <h3>Add tickets</h3>
+    <label>Name<input id="a-label" type="text" maxlength="80" placeholder="e.g. DisneySea – Nisa" required></label>
+    <label>Day<select id="a-day"></select></label>
+    <label>Screenshot, photo or PDF<input id="a-file" type="file" accept="image/*,application/pdf" multiple required></label>
+    <p class="msg" id="a-msg">PDFs are turned into one image per page.</p>
+    <div class="row"><button type="button" class="btn" id="a-cancel">Cancel</button><button type="submit" class="btn primary" id="a-go">Add</button></div>
+  </form>
+</div>
+
+<!-- food checklist -->
+<div class="ov sheet" id="fl" hidden role="dialog" aria-modal="true" aria-label="Food to try">
+  <div class="card fl-card">
+    <div style="display:flex;align-items:center;gap:10px"><h3 style="flex:1" id="fl-title">🍜 Food to try</h3><button class="btn" id="fl-x">Close</button></div>
+    <p class="msg" id="fl-sub"></p>
+    <div id="fl-list"></div>
+  </div>
+</div>
+
+<!-- allergy card -->
+<div class="ov tv" id="card" hidden role="dialog" aria-modal="true" aria-label="Allergy card">
+  <div class="ov-top"><div class="lbl"><b>Show this at restaurants</b></div><button class="ib" id="card-x">Close</button></div>
+  <div class="empty" style="color:#111317;gap:22px">
+    <div class="jp" lang="ja">アボカドの<br>アレルギーがあります。</div>
+    <div class="jp" lang="ja">わさびなしで<br>おねがいします。</div>
+    <div style="color:#5C5F6E">I have an avocado allergy.<br>Without wasabi, please.</div>
+  </div>
+</div>
+
+
+<!-- hotel sheet -->
+<div class="ov sheet" id="hs" hidden role="dialog" aria-modal="true" aria-label="Hotel">
+  <form class="card" id="hs-form">
+    <h3 id="hs-t">Hotel</h3>
+    <label>Hotel name<input id="hs-n" type="text" maxlength="80" required></label>
+    <label>Address (Japanese is best, to show taxi drivers)<input id="hs-a" type="text" maxlength="200"></label>
+    <p class="msg">Saved only on this phone.</p>
+    <div class="row"><button type="button" class="btn" id="hs-x">Cancel</button><button type="submit" class="btn primary">Save</button></div>
+  </form>
+</div>
+<!-- backup -->
+<div class="ov sheet" id="bk" hidden role="dialog" aria-modal="true" aria-label="Backup">
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px"><h3 style="flex:1">Backup</h3><button class="btn" id="bk-x">Close</button></div>
+    <p class="msg" style="color:var(--ink)">Everything you add (tickets, edits, ticks, lists) is saved only on this device. Export a backup to keep a copy, or to move it to another phone.</p>
+    <button class="btn primary" id="bk-export">Export backup</button>
+    <label class="btn" for="bk-file" style="text-align:center;cursor:pointer">Import a backup<input type="file" id="bk-file" accept="application/json,.json" hidden></label>
+    <p class="msg" id="bk-msg"></p>
+  </div>
+</div>
+<script type="application/json" id="plan-data">{"days": [{"date": "2026-11-29", "city": "tokyo", "title": "Arrival, then Shibuya at sunset", "chips": ["Shibuya"], "intro": "", "rail": [{"t": "~2 h", "x": "Narita → hotel, drop bags", "move": true}, {"t": "~45 min", "x": "Hachiko statue & the Shibuya Scramble", "move": false}, {"t": "~1 h", "x": "**Shibuya Sky** at sunset (your booked slot)", "move": false, "tm": "your booked slot"}, {"t": "~45 min", "x": "Pokémon Center + Nintendo Tokyo (Shibuya Parco)", "move": false, "tm": "open ~11:00–21:00"}, {"t": "~15 min", "x": "**Maman**, the giant spider at Roppongi Hills, lit at night", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "Shibuya Scramble", "d": "The busiest crossing in the world, best seen from above and then from the middle."}, {"n": "Shibuya Sky", "d": "The only open-air rooftop deck in central Tokyo. At sunset the city lights come on below you."}, {"n": "Pokémon Center Shibuya", "d": "Has a life-size Mewtwo and is on the same floor as Nintendo Tokyo."}]}, {"h": "Optional", "items": [{"n": "Maman, Roppongi Hills", "d": "A 10 m bronze spider by Louise Bourgeois, one of the best-known public sculptures in the world. It's free, and the same work stands outside the Tate, the Guggenheim Bilbao and the National Gallery of Canada."}, {"n": "Miyashita Park", "d": "Rooftop park and Shibuya Yokocho food alley, an easy first dinner."}, {"n": "Center Gai / Don Quijote", "d": "Buy toiletries and snacks for the week."}]}], "tickets": "Shibuya Sky time slot", "food": "", "start": "Land 11:45"}, {"date": "2026-11-30", "city": "tokyo", "title": "Old Tokyo: Asakusa, the river, Skytree, Akihabara", "chips": ["Asakusa", "Sumida", "Akihabara"], "intro": "", "rail": [{"t": "~1 h", "x": "**Senso-ji** & Kaminarimon while it’s quiet", "move": false}, {"t": "~45 min", "x": "Nakamise street snacks", "move": false}, {"t": "~45 min", "x": "Kappabashi kitchen street", "move": false}, {"t": "~30 min", "x": "Riverside walk along the Sumida to Skytree", "move": false}, {"t": "~2 h", "x": "**Tokyo Skytree Town** & Solamachi (Pokémon Center, Kirby Café)", "move": false, "tm": "Pokémon Center ~10:00–21:00"}, {"t": "~2–3 h", "x": "**Akihabara**: retro games, arcades, anime shops", "move": false, "tm": "most shops close ~20:00–21:00"}], "groups": [{"h": "Must-visit", "items": [{"n": "Senso-ji", "d": "Tokyo's oldest temple (645 AD). The lantern gate and five-storey pagoda look best in early light."}, {"n": "Nakamise-dori", "d": "A 250 m snack street that has run for 300 years."}, {"n": "Akihabara at night", "d": "Neon, multi-floor arcades and anime shops. Most shops close around 20:00."}]}, {"h": "Optional", "items": [{"n": "Ueno Ameyoko", "d": "A busy market street under the tracks, one stop from Akihabara."}, {"n": "Skytree deck", "d": "Optional. You'll already have Shibuya Sky, Tokyo Tower and the free government observatory."}]}], "tickets": "none needed", "food": "", "start": "07:30"}, {"date": "2026-12-01", "city": "tokyo", "title": "Mt Fuji day trip", "chips": ["Mt Fuji", "Kawaguchiko"], "intro": "", "rail": [{"t": "~2 h", "x": "Tour bus to the Fuji lakes", "move": true}, {"t": "~1 h", "x": "**Chureito Pagoda** with Fuji behind it", "move": false}, {"t": "~1 h", "x": "Lake Kawaguchi / Oishi Park: Fuji reflected in the lake", "move": false}, {"t": "~1 h", "x": "**Oshino Hakkai** spring ponds", "move": false}, {"t": "~1 h", "x": "Fuji 5th Station, if the road is open", "move": false}, {"t": "~2 h", "x": "Back to Shinjuku, early night", "move": true}], "groups": [{"h": "Know this first", "items": [{"n": "Fuji Five Lakes ≠ Hakone", "d": "Your note lists the Hakone Ropeway and Owakudani, but that is a separate area about 1.5 h away. With sunset at 16:30, doing both in one day is rushed. Kawaguchiko has the more reliable views. If you really want Hakone, it could be its own day on 3 Dec instead of Odaiba."}, {"n": "Mornings are clearest", "d": "In December, Fuji is usually sharpest from sunrise to around 11:00. Cloud builds in the afternoon."}]}, {"h": "Must-see", "items": [{"n": "Chureito Pagoda", "d": "A red pagoda with Fuji behind it. 400 steps up."}, {"n": "Lake Kawaguchi north shore", "d": "Fuji reflected in the lake."}, {"n": "Oshino Hakkai", "d": "Spring ponds fed by Fuji snowmelt, with a village feel."}]}], "tickets": "tour with free cancellation, or the Fuji Excursion train", "food": "", "start": "07:15 (tour pickup in Shinjuku)"}, {"date": "2026-12-02", "city": "tokyo", "title": "Tokyo DisneySea", "chips": ["DisneySea"], "intro": "", "rail": [{"t": "~1 h", "x": "Rope drop: go straight to Soaring, buy Premier Access in the app", "move": false}, {"t": "~2 h", "x": "**Fantasy Springs**: Frozen, Tangled, Peter Pan", "move": false}, {"t": "~2 h", "x": "Mysterious Island & Mermaid Lagoon", "move": false}, {"t": "~30 min", "x": "Christmas Greeting show on the harbor", "move": false}, {"t": "~2 h", "x": "Arabian Coast & American Waterfront (Tower of Terror, Toy Story Mania)", "move": false}, {"t": "~1 h", "x": "**Believe! Sea of Dreams** night show (arrive early for a spot)", "move": false, "tm": "check the show time in the app"}], "groups": [{"h": "Must-do", "items": [{"n": "Soaring: Fantastic Flight", "d": "Often called the best ride in the park, and it books up early."}, {"n": "Fantasy Springs", "d": "Frozen, Tangled and Peter Pan areas, opened in 2024."}, {"n": "Journey to the Center of the Earth", "d": "Inside the volcano. A Tokyo-only classic."}, {"n": "Tower of Terror · Toy Story Mania!", "d": "Two more favourites to plan around."}]}, {"h": "Tips", "items": [{"n": "Tokyo Disney Resort app", "d": "Set it up before the trip with your tickets linked. Premier Access and food mobile ordering run through it."}, {"n": "Gyoza dog, ukiwa-man", "d": "Two cult DisneySea snacks."}]}], "tickets": "1-Day Passport ¥10,900 pp (dated) · Premier Access ¥1,500–2,500 per ride in the app", "food": "", "start": "07:00 (gates open 9:00)"}, {"date": "2026-12-03", "city": "tokyo", "title": "teamLab, the bay, Rainbow Bridge, Tokyo Tower at night", "chips": ["Toyosu", "Odaiba", "Shiba"], "intro": "", "rail": [{"t": "~1.5–2 h", "x": "**teamLab Planets**", "move": false, "tm": "your booked slot"}, {"t": "~45 min", "x": "Toyosu rooftop garden, bay views", "move": false}, {"t": "~1.5 h", "x": "Odaiba: Unicorn Gundam & Seaside Park", "move": false}, {"t": "~1 h", "x": "**Rainbow Bridge** walk at sunset", "move": false, "tm": "last entry ~17:30"}, {"t": "~1 h", "x": "**Tokyo Tower** & Zojo-ji, lit up", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "teamLab Planets", "d": "A walk-through digital art museum: water rooms, a floating flower garden and an infinity crystal room."}, {"n": "Rainbow Bridge at dusk", "d": "The best skyline view of the trip. The bridge lights up after sunset."}, {"n": "Tokyo Tower + Zojo-ji", "d": "A 1958 orange tower behind a 600-year-old temple, the image that says “Tokyo”."}]}, {"h": "Optional", "items": [{"n": "Toyosu rooftop garden", "d": "Free, above the fish market, with bay views."}, {"n": "Roppongi Hills / Azabudai Hills", "d": "Both are next to your hotel. Tokyo City View, Mori Art Museum and teamLab Borderless (Azabudai) are good for a late evening or a rainy hour."}, {"n": "Tokyo Tower Main Deck", "d": "Optional if you skip Skytree. Going in isn't required; the outside view is the main attraction."}]}], "tickets": "teamLab Planets time slot", "food": "", "start": "10:30 (slow morning after Fuji and Disney)"}, {"date": "2026-12-04", "city": "tokyo", "title": "Kimono at Meiji Jingu, Harajuku, Nakano, Shinjuku by night", "chips": ["Harajuku", "Omotesando", "Shinjuku", "Nakano"], "intro": "", "rail": [{"t": "~45 min", "x": "Kimono dressing in Harajuku", "move": false}, {"t": "~1.5 h", "x": "**Meiji Jingu** in kimono", "move": false}, {"t": "~1.5 h", "x": "Omotesando & Cat Street in kimono, photos", "move": false}, {"t": "~45 min", "x": "Return the kimono, Takeshita-dori", "move": false}, {"t": "~2 h", "x": "**Nakano Broadway** for anime figures", "move": false}, {"t": "~1 h", "x": "Coffee break in Shinjuku, nothing planned", "move": false}, {"t": "~2 h", "x": "Omoide Yokocho & the Kabukicho lights", "move": false}, {"t": "~1–2 h", "x": "**Golden Gai** bars", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "Meiji Jingu in kimono", "d": "The shrine is the classic kimono backdrop, with wooden gates and a forest. A 70-hectare man-made forest in the middle of the city, with Tokyo's most important Shinto shrine."}, {"n": "Takeshita-dori", "d": "The home of kawaii street fashion and rainbow candy floss."}, {"n": "Nakano Broadway", "d": "Where Tokyo collectors buy figures. It feels local, it's much less of a show than Akihabara, and used and rare figures are often cheaper. Bring your passport for tax-free."}, {"n": "Govt. Observatory", "d": "A free 202 m view with no booking needed."}, {"n": "Golden Gai", "d": "About 200 bars of 6 seats each, in a few post-war alleys."}]}, {"h": "Optional", "items": [{"n": "Shinjuku Gyoen", "d": "Japanese, French and English gardens. Late maples are possible in early December."}, {"n": "Nezu Museum garden", "d": "A hidden garden at the end of Omotesando, ¥1,300."}, {"n": "Govt. Observatory", "d": "Free night view from the 45th floor, 5 min from Shinjuku Station. Only if you still have energy."}, {"n": "Shinjuku 3D cat billboard", "d": "At the east exit, on the way to Kabukicho."}]}], "tickets": "kimono rental, Harajuku (booked)", "food": "", "start": "09:30 (kimono shop)"}, {"date": "2026-12-05", "city": "tokyo", "title": "Tsukiji, Ginza, Ikebukuro karaoke", "chips": ["Tsukiji", "Ginza", "Ikebukuro"], "intro": "", "rail": [{"t": "~1.5 h", "x": "**Tsukiji Outer Market**", "move": false}, {"t": "~2 h", "x": "**Ginza**: Itoya stationery, Ginza Six, department stores", "move": false}, {"t": "~1 h", "x": "Imperial Palace East Gardens", "move": false, "tm": "closes 16:00, last entry 15:30"}, {"t": "~2 h", "x": "**Ikebukuro**: Pokémon Center Mega Tokyo & Sunshine City", "move": false, "tm": "Pokémon Center ~10:00–20:00"}, {"t": "~2 h", "x": "**Karaoke**", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "Tsukiji Outer Market", "d": "The best breakfast-by-snacks in Tokyo."}, {"n": "Ginza", "d": "Tokyo’s polished shopping street: Itoya’s 12 floors of stationery and the department-store food halls."}, {"n": "Karaoke", "d": "A private room by the hour, with a big song list in Japanese and English."}]}, {"h": "Optional", "items": [{"n": "Marunouchi illumination", "d": "Lit trees near Tokyo Station, usually Nov–Feb."}]}], "tickets": "none needed", "food": "", "start": "08:00"}, {"date": "2026-12-06", "city": "kyoto", "title": "Shinkansen, Sanjusangen-do, Higashiyama and Gion at dusk", "chips": ["Sanjusangen-do", "Higashiyama", "Gion"], "intro": "", "rail": [{"t": "~2 h 15", "x": "Shinkansen to Kyoto. Sit in seat E for the Fuji view", "move": true}, {"t": "~45 min", "x": "**Sanjusangen-do**: 1,001 golden statues", "move": false}, {"t": "~1.5 h", "x": "**Kiyomizu-dera**", "move": false}, {"t": "~1 h", "x": "Sannenzaka & Ninenzaka old streets", "move": false}, {"t": "~1 h", "x": "Kodai-ji (lit after dusk) & Yasaka Shrine", "move": false, "tm": "lights from 17:00"}, {"t": "~1 h", "x": "**Gion** & Shirakawa canal at dusk", "move": false}, {"t": "~1.5 h", "x": "Pontocho lantern alley", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "Sanjusangen-do", "d": "1,001 life-size Kannon statues from the 12th–13th centuries, standing in rows. It's one of the most striking rooms in Japan, and every statue is a national treasure."}, {"n": "Kiyomizu-dera", "d": "A huge wooden stage built without nails, looking over the city. UNESCO-listed."}, {"n": "Sannenzaka · Ninenzaka", "d": "Stone-paved Edo-era slopes. Tradition says don't trip here."}, {"n": "Gion · Shirakawa", "d": "The geiko district. Willows, a canal and lanterns."}]}, {"h": "Optional", "items": [{"n": "Kennin-ji", "d": "Kyoto's oldest Zen temple, with the twin-dragon ceiling. Right in Gion."}, {"n": "Kodai-ji light-up", "d": "Runs until 13 Dec, with lights from 17:00. It's on the walk from Ninenzaka to Gion."}, {"n": "Eikan-do night illumination", "d": "6 Dec is the final night (17:30–21:00). It's about 20 min by taxi from Gion and is Kyoto's most famous autumn-leaves illumination."}]}], "tickets": "Shinkansen reserved seat · Kiyomizu ¥500 at the gate", "food": "", "start": "08:00 (Shinkansen)"}, {"date": "2026-12-07", "city": "kyoto", "title": "Golden Pavilion, then Arashiyama to the Kimono Forest at night", "chips": ["Kinkaku-ji", "Arashiyama"], "intro": "", "rail": [{"t": "~1 h", "x": "**Kinkaku-ji**, the Golden Pavilion", "move": false}, {"t": "~45 min", "x": "Ryoan-ji rock garden", "move": false}, {"t": "~30 min", "x": "Togetsukyo bridge", "move": false}, {"t": "~1.5 h", "x": "**Iwatayama Monkey Park** (20-min climb)", "move": false, "tm": "last entry ~15:30"}, {"t": "~1.5 h", "x": "Tenryu-ji garden & the **Bamboo Grove**", "move": false, "tm": "garden closes 17:00"}, {"t": "~45 min", "x": "**Kimono Forest** after dark", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "Kinkaku-ji", "d": "A pavilion covered in gold leaf, mirrored in the pond. The most-photographed building in Kyoto."}, {"n": "Arashiyama Bamboo Grove", "d": "Tall stalks creaking in the wind. Go early or late; midday is shoulder to shoulder."}, {"n": "Iwatayama Monkey Park", "d": "Wild macaques, with a city view from the top. You feed them from inside a hut."}, {"n": "Kimono Forest", "d": "Free, and best after dark."}]}, {"h": "Alternative", "items": [{"n": "Bamboo grove at 7:30 instead", "d": "For empty photos, reverse the day: Arashiyama first, then Kinkaku-ji in the afternoon (closes 17:00). You'd lose the Kimono Forest at night."}]}], "tickets": "all at the gate (Kinkaku-ji ¥500, Monkey Park ~¥800)", "food": "", "start": "09:00"}, {"date": "2026-12-08", "city": "kyoto", "title": "Fushimi Inari at sunrise, Nishiki Market, Philosopher’s Path", "chips": ["Fushimi", "Downtown", "Higashiyama"], "intro": "", "rail": [{"t": "~2–2.5 h", "x": "**Fushimi Inari**: the torii path up to the Yotsutsuji viewpoint", "move": false}, {"t": "~1 h", "x": "Tofuku-ji and its late maples", "move": false}, {"t": "~1.5 h", "x": "**Nishiki Market**", "move": false}, {"t": "~1 h", "x": "**Ginkaku-ji**, the Silver Pavilion", "move": false, "tm": "closes 16:30"}, {"t": "~1 h", "x": "**Philosopher’s Path** down to Nanzen-ji", "move": false}, {"t": "~45 min", "x": "Kamo riverbank walk", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "Fushimi Inari Taisha", "d": "About 10,000 vermilion torii winding up a mountain. Morning light makes it glow."}, {"n": "Nishiki Market", "d": "“Kyoto’s Kitchen”, 400 years old and 130 stalls long."}, {"n": "Ginkaku-ji & Philosopher’s Path", "d": "The Silver Pavilion’s moss garden, then a quiet canal walk."}]}, {"h": "Optional", "items": [{"n": "Nanzen-ji aqueduct", "d": "A brick aqueduct inside a temple, at the end of the Philosopher’s Path."}, {"n": "Teramachi arcades", "d": "Covered shopping streets next to Nishiki, good for souvenirs and rainy hours."}]}], "tickets": "all at the gate", "food": "", "start": "07:00"}, {"date": "2026-12-09", "city": "kyoto", "title": "Nara half-day, tea ceremony in the afternoon", "chips": ["Nara"], "intro": "", "rail": [{"t": "~1 h", "x": "Kofuku-ji and the **Ashura** statue", "move": false}, {"t": "~45 min", "x": "Nara Park and the deer", "move": false}, {"t": "~1.5 h", "x": "**Todai-ji**, the Great Buddha", "move": false}, {"t": "~20 min", "x": "Mochi pounding at Nakatanidou", "move": false}, {"t": "~1 h", "x": "Rest at the ryokan", "move": false}, {"t": "~1 h", "x": "**Tea ceremony**", "move": false, "tm": "booked for 15:30"}, {"t": "~1.5 h", "x": "Gion at dusk & souvenirs", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "Ashura, Kofuku-ji", "d": "Often called Japan's most beloved Buddhist sculpture: a boyish face with three expressions."}, {"n": "Todai-ji", "d": "A 15 m bronze Buddha inside one of the world's largest wooden buildings."}, {"n": "Nara deer", "d": "1,200 sacred, free-roaming deer. Hide paper maps: they eat them."}, {"n": "Tea ceremony", "d": "The quiet, set ritual of matcha. Kyoto is the home of the Urasenke school."}]}, {"h": "Optional", "items": [{"n": "Kasuga Taisha", "d": "A path of 3,000 stone lanterns, +1 h. Add it if you take the tea ceremony later."}]}], "tickets": "tea ceremony (booked) · Kofuku-ji ~¥900 · Todai-ji ¥800 at the gate", "food": "", "start": "08:15"}, {"date": "2026-12-10", "city": "osaka", "title": "Move to Osaka, Osaka Castle, Umeda at sunset", "chips": ["Osaka Castle", "Umeda"], "intro": "", "rail": [{"t": "~1.5 h", "x": "Keihan train to Osaka, bags to the hotel", "move": true}, {"t": "~2 h", "x": "**Osaka Castle**", "move": false}, {"t": "~1.5 h", "x": "Check in and rest", "move": false}, {"t": "~1.5 h", "x": "Umeda shopping: Uniqlo, Loft, suitcase", "move": false}, {"t": "~1 h", "x": "**Umeda Sky Building** at sunset", "move": false}, {"t": "~2 h", "x": "Christmas market under the Sky Building", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "Osaka Castle", "d": "The white-and-gold keep of the city that unified Japan, rising from huge stone walls."}, {"n": "Umeda Sky Building", "d": "Two towers linked by an open-air ring deck 173 m up."}]}, {"h": "Optional", "items": [{"n": "Nijo Castle before checkout", "d": "Opens 8:45, close to your Kyoto hotel. The palace interiors are closed on Tuesdays in December, so this is the day to see it (~1.5 h)."}, {"n": "Nishinomaru Garden", "d": "The best lawn view of the castle."}, {"n": "Kaiyukan Aquarium", "d": "One of the world's largest aquariums, with whale sharks. It's an alternative to Umeda if it rains."}, {"n": "Midosuji illumination", "d": "Lights along the main boulevard, nightly until 31 Dec."}]}], "tickets": "castle ¥600 at the gate · Umeda Sky at the gate", "food": "", "start": "09:30 (checkout)"}, {"date": "2026-12-11", "city": "osaka", "title": "Universal Studios Japan", "chips": ["USJ"], "intro": "", "rail": [{"t": "~2–3 h", "x": "**Super Nintendo World** first: Mario Kart, Yoshi", "move": false, "tm": "timed entry in the USJ app"}, {"t": "~1 h", "x": "Donkey Kong Country", "move": false}, {"t": "~2 h", "x": "**Wizarding World of Harry Potter**, butterbeer", "move": false}, {"t": "~2 h", "x": "Flying Dinosaur & Minion Park", "move": false}, {"t": "~1 h", "x": "Holiday show & the Christmas lights", "move": false}], "groups": [{"h": "Must-do", "items": [{"n": "Super Nintendo World", "d": "Walk inside Mario's world. Mario Kart: Koopa's Challenge is an AR ride."}, {"n": "Donkey Kong Country", "d": "Mine Cart Madness, opened in 2024."}, {"n": "Harry Potter and the Forbidden Journey", "d": "The Hogsmeade village is snowy all year."}, {"n": "The Flying Dinosaur", "d": "You hang face-down. Intense."}]}, {"h": "Tips", "items": [{"n": "USJ official app", "d": "For entry tickets to the Nintendo area, wait times and mobile food orders."}]}], "tickets": "Studio Pass (dated) + Express Pass", "food": "", "start": "07:30 (gates open early)"}, {"date": "2026-12-12", "city": "osaka", "title": "Kuromon, Den Den Town, Shinsekai, sumo, Dotonbori", "chips": ["Namba", "Shinsekai"], "intro": "", "rail": [{"t": "~1 h", "x": "**Kuromon Market**", "move": false}, {"t": "~1.5 h", "x": "**Den Den Town** for figures", "move": false}, {"t": "~1.5 h", "x": "**Shinsekai** & Tsutenkaku tower", "move": false}, {"t": "~1.5 h", "x": "**Sumo show**", "move": false, "tm": "your booked show time"}, {"t": "~2 h", "x": "Rest at the hotel", "move": false}, {"t": "~2 h", "x": "**Dotonbori** at night", "move": false}], "groups": [{"h": "Must-visit", "items": [{"n": "Dotonbori", "d": "The neon heart of “kuidaore”, which means “eat till you drop”."}, {"n": "Shinsekai", "d": "A 1910s neighbourhood with Showa-era signs and kushikatsu."}, {"n": "Kuromon Market", "d": "“Osaka's Kitchen”. Seafood grilled to order."}, {"n": "Den Den Town", "d": "Osaka's version of Akihabara, used mostly by locals. Figure prices are often lower than in Tokyo."}]}, {"h": "Optional", "items": [{"n": "Shinsaibashi & Amerikamura shopping", "d": "Uniqlo, GU, Loft, Don Quijote, and Mandarake Grand Chaos for figures. Fits at 16:30 instead of the hotel break, or after Dotonbori (shops open until ~21:00)."}, {"n": "Abeno Harukas 300", "d": "Japan's tallest building, 10 min from Shinsekai."}, {"n": "Osaka Hikari-Renaissance", "d": "Nakanoshima projection mapping (17:30–21:30), right by your hotel."}, {"n": "Karaoke", "d": "A second round of karaoke in Namba (Jankara is Osaka’s own cheap chain)."}]}], "tickets": "sumo show (booked)", "food": "", "start": "10:00 (slow morning)"}, {"date": "2026-12-13", "city": "osaka", "title": "Fly home from KIX at 13:00", "chips": ["Kansai Airport"], "intro": "", "rail": [{"t": "~1 h", "x": "Train to Kansai Airport", "move": true}, {"t": "~2 h", "x": "Check-in, tax-free check, security", "move": false}, {"t": "—", "x": "Flight home at 13:00", "move": true, "tm": "13:00"}], "groups": [{"h": "Tips", "items": [{"n": "Bring your passport for tax-free shopping", "d": "Purchases over ¥5,000 per store qualify for tax-free."}, {"n": "Use up your Suica", "d": "Spend the balance at konbini or airport shops."}]}], "tickets": "Rapi:t seat (station machine, same day)", "food": "", "start": "08:45 (checkout)"}]}</script>
+<script>
+function boot(PAYLOAD){
+const DAYS = PAYLOAD.days;
+let HOTELS = {};
+const CITY = {tokyo:'Tokyo',kyoto:'Kyoto',osaka:'Osaka'};
+const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+function localISO(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function label(iso){ const [y,m,d]=iso.split('-').map(Number); const dt=new Date(y,m-1,d); return WD[dt.getDay()]+' '+d+' '+MO[m-1]; }
+function todayIndex(){ const t=localISO(new Date()); return DAYS.findIndex(d=>d.date===t); }
+function hotelFor(day){ if(day.date==='2026-12-13') return null; if(day.date>='2026-12-10') return 'osaka'; if(day.date>='2026-12-06') return 'kyoto'; return 'tokyo'; }
+
+let idx = (() => { const t=todayIndex(); return t>=0 ? t : 0; })();
+let tickets = [];          // all ticket docs {id, ...data}
+let db = null, assets = null, slide = 0;
+
+/* ---------- on-device storage (IndexedDB), same calls the app already uses ---------- */
+const LS = (() => {
+  let idb=null; const cache={}; const subs={}; const blobs={}; const urls={};
+  function open(){ return new Promise((res,rej)=>{ const r=indexedDB.open('japan-days',1); r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('docs'); d.createObjectStore('blobs'); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+  function tx(store,mode,fn){ return new Promise((res,rej)=>{ const t=idb.transaction(store,mode); const s=t.objectStore(store); const out=fn(s); t.oncomplete=()=>res(out&&out.result); t.onerror=()=>rej(t.error); }); }
+  function all(store){ return new Promise((res,rej)=>{ const out={}; const t=idb.transaction(store,'readonly'); const c=t.objectStore(store).openCursor(); c.onsuccess=()=>{ const cur=c.result; if(cur){ out[cur.key]=cur.value; cur.continue(); } else res(out); }; c.onerror=()=>rej(c.error); }); }
+  function snapOf(coll){ const docs=Object.keys(cache[coll]||{}).map(id=>({id, exists:true, data:()=>cache[coll][id]})); return {docs, size:docs.length, empty:!docs.length, metadata:{fromCache:false,hasPendingWrites:false}}; }
+  function emit(coll){ (subs[coll]||[]).forEach(f=>{ try{ f(snapOf(coll)); }catch(e){} }); }
+  async function put(coll,id,data){ (cache[coll]=cache[coll]||{})[id]=data; await tx('docs','readwrite',s=>s.put(data,coll+'/'+id)); emit(coll); }
+  async function del(coll,id){ if(cache[coll]) delete cache[coll][id]; await tx('docs','readwrite',s=>s.delete(coll+'/'+id)); emit(coll); }
+  const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  function docRef(coll,id){ return {
+    id, set:d=>put(coll,id,JSON.parse(JSON.stringify(d))),
+    update:d=>{ const cur=(cache[coll]||{})[id]; if(!cur) return Promise.reject({code:'invalid_argument'}); return put(coll,id,Object.assign({},cur,JSON.parse(JSON.stringify(d)))); },
+    delete:()=>del(coll,id),
+    get:async()=>{ const v=(cache[coll]||{})[id]; return {id,exists:!!v,data:()=>v}; },
+    onSnapshot:(f)=>{ const g=s=>{ const v=(cache[coll]||{})[id]; f({id,exists:!!v,data:()=>v,metadata:{fromCache:false}}); }; (subs[coll]=subs[coll]||[]).push(g); g(); return ()=>{}; }
+  }; }
+  const db={
+    collection:coll=>({ doc:id=>docRef(coll,id||newId()), add:async d=>{ const id=newId(); await put(coll,id,JSON.parse(JSON.stringify(d))); return docRef(coll,id); },
+      onSnapshot:(f)=>{ (subs[coll]=subs[coll]||[]).push(f); f(snapOf(coll)); return ()=>{}; } }),
+    doc:path=>{ const i=path.lastIndexOf('/'); return docRef(path.slice(0,i),path.slice(i+1)); }
+  };
+  const assets={
+    upload:async blob=>{ const id=newId(); await tx('blobs','readwrite',s=>s.put(blob,id)); blobs[id]=blob; urls[id]=URL.createObjectURL(blob); return {id,url:urls[id],sizeBytes:blob.size,contentType:blob.type}; },
+    delete:async id=>{ await tx('blobs','readwrite',s=>s.delete(id)); if(urls[id]) URL.revokeObjectURL(urls[id]); delete urls[id]; delete blobs[id]; return {deleted:true}; }
+  };
+  async function init(){
+    idb=await open();
+    const docs=await all('docs'); Object.keys(docs).forEach(k=>{ const i=k.indexOf('/'); const coll=k.slice(0,k.lastIndexOf('/')), id=k.slice(k.lastIndexOf('/')+1); (cache[coll]=cache[coll]||{})[id]=docs[k]; });
+    const b=await all('blobs'); Object.keys(b).forEach(id=>{ blobs[id]=b[id]; urls[id]=URL.createObjectURL(b[id]); });
+    try{ await navigator.storage?.persist?.(); }catch(e){}
+  }
+  const toDataURL=b=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(b); });
+  async function exportAll(){ const out={app:'japan-days',v:1,exported:new Date().toISOString(),docs:{},blobs:{}}; Object.keys(cache).forEach(c=>Object.keys(cache[c]).forEach(id=>{ out.docs[c+'/'+id]=cache[c][id]; })); for(const id of Object.keys(blobs)) out.blobs[id]=await toDataURL(blobs[id]); return out; }
+  async function importAll(obj){
+    if(!obj||obj.app!=='japan-days') throw new Error('not a backup');
+    for(const id of Object.keys(obj.blobs||{})){ const blob=await (await fetch(obj.blobs[id])).blob(); await tx('blobs','readwrite',s=>s.put(blob,id)); blobs[id]=blob; if(urls[id]) URL.revokeObjectURL(urls[id]); urls[id]=URL.createObjectURL(blob); }
+    const touched=new Set();
+    for(const k of Object.keys(obj.docs||{})){ const coll=k.slice(0,k.lastIndexOf('/')), id=k.slice(k.lastIndexOf('/')+1); (cache[coll]=cache[coll]||{})[id]=obj.docs[k]; await tx('docs','readwrite',s=>s.put(obj.docs[k],k)); touched.add(coll); }
+    touched.forEach(emit);
+  }
+  return {init, db, assets, url:id=>urls[id]||'', exportAll, importAll, has:c=>!!cache[c]&&Object.keys(cache[c]).length>0};
+})();
+function blobURL(id){ return LS.url(id); }
+
+/* ---------- day content: defaults + saved edits ---------- */
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = s => esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+const toMd = s => String(s||'').replace(/<b>(.*?)<\/b>/g,'**$1**').replace(/<[^>]+>/g,'');
+const uid = () => Math.random().toString(36).slice(2,9);
+DAYS.forEach(d=>{
+  d.start=toMd(d.start||''); d.title=toMd(d.title); d.intro=toMd(d.intro); d.food=toMd(d.food); d.tickets=toMd(d.tickets); d.notes='';
+  d.rail=d.rail.map((r,i)=>({id:'r'+i,t:r.t,x:toMd(r.x),move:!!r.move,tm:r.tm||''}));
+  d.groups=d.groups.map(g=>({h:g.h,items:g.items.map(it=>({n:toMd(it.n),d:toMd(it.d)}))}));
+  d.done=[];
+});
+let overrides = {};        // date -> saved day doc
+let editing = null;        // draft while editing
+const FIELDS=['start','title','intro','tickets','food','notes','rail','groups','done'];
+function getDay(i){ const d=DAYS[i], o=overrides[d.date]; if(!o) return d; const out=Object.assign({},d); FIELDS.forEach(f=>{ if(o[f]!==undefined) out[f]=o[f]; }); out.updated=o.updated; return out; }
+function canEdit(){ return !!(db && assets); }
+let chain=Promise.resolve();
+function saveDay(date, day){
+  const body={}; FIELDS.forEach(f=>body[f]=JSON.parse(JSON.stringify(day[f]??(f==='done'?[]:'')))); body.updated=Date.now();
+  overrides[date]=body;  // optimistic
+  chain = chain.then(()=>db.collection('days').doc(date).set(body)).catch(()=>{ flash('Could not save. Check the connection.'); });
+  return chain;
+}
+function flash(t){ const s=$('edited'); s.textContent=t; s.style.color='var(--danger)'; setTimeout(()=>{ s.style.color=''; render(); },3000); }
+
+/* ---------- render a day ---------- */
+function renderDots(){
+  const t=todayIndex();
+  $('dots').innerHTML='';
+  DAYS.forEach((d,i)=>{
+    const b=document.createElement('button');
+    b.className='dot'+(i===t?' today':''); b.dataset.c=d.city; b.setAttribute('role','tab');
+    b.setAttribute('aria-label',label(d.date)); b.setAttribute('aria-current', i===idx?'true':'false');
+    b.disabled=!!editing; b.innerHTML='<i></i>'; b.onclick=()=>go(i); $('dots').appendChild(b);
+  });
+}
+function dayTickets(date){ return tickets.filter(t=>t.day===date).sort((a,b)=>(a.order||0)-(b.order||0)); }
+function renderTicketButton(){
+  const d=getDay(idx), n=dayTickets(d.date).length;
+  $('tk-count').textContent = n ? (n===1?'1 ticket':n+' tickets') : 'Tickets';
+  $('tk-sub').textContent = n ? 'Tap to show QR codes and barcodes' : 'None added yet for this day';
+  $('tk-note').innerHTML = d.tickets ? 'Needed today: '+fmt(d.tickets) : '';
+  $('tk-note').hidden = !d.tickets;
+}
+function nowMinutes(){ const n=new Date(); return n.getHours()*60+n.getMinutes(); }
+function render(){
+  const d=getDay(idx), t=todayIndex(), today=localISO(new Date());
+  document.body.dataset.city=d.city;
+  $('w-d').textContent=label(d.date);
+  $('w-s').innerHTML='Day '+(idx+1)+' of '+DAYS.length+' · <b>'+CITY[d.city]+'</b>';
+  $('prev').disabled = idx===0 || !!editing; $('next').disabled = idx===DAYS.length-1 || !!editing;
+  const st=$('status'); st.innerHTML='';
+  const span=document.createElement('span');
+  if(t<0 && today < DAYS[0].date){
+    const n=new Date(); const days=Math.round((new Date(2026,10,29)-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5);
+    span.textContent = days===1 ? 'Trip starts tomorrow' : 'Trip starts in '+days+' days';
+  } else if(t<0){ span.textContent='Trip is over. Showing the plan.'; }
+  else if(t===idx){ span.textContent='Today'; span.style.color='var(--now)'; }
+  else { span.textContent = idx<t ? 'Earlier day' : 'Coming up'; }
+  st.appendChild(span);
+  if(t>=0 && t!==idx && !editing){ const b=document.createElement('button'); b.textContent='Back to today'; b.onclick=()=>go(t); st.appendChild(b); }
+  renderDots();
+  $('view').hidden=!!editing; $('ed').hidden=!editing;
+  if(editing){ renderEdit(); return; }
+  $('title').innerHTML=fmt(d.title);
+  $('ed-open').hidden=!canEdit();
+  $('chips').innerHTML=d.chips.map(c=>'<span class="chip">'+esc(c)+'</span>').join('');
+  $('intro').innerHTML=fmt(d.intro); $('intro').hidden=!d.intro;
+  $('start').hidden=!d.start; $('start').innerHTML = d.start ? 'Start around <b>'+esc(d.start)+'</b>' : '';
+  const h=hotelFor(d);
+  $('hotel').hidden=!h;
+  if(h){ const H=HOTELS[h]||{}; $('h-k').textContent = (d.date==='2026-12-06'||d.date==='2026-12-10' ? 'New hotel tonight' : 'Tonight')+' · '+CITY[h]; $('h-n').textContent=H.n||'No hotel added yet'; $('h-a').textContent=H.a||''; $('h-a').hidden=!H.a; $('h-copy').hidden=!H.a; $('h-edit').textContent=H.n?'Edit':'Add hotel'; }
+  let nowI=-1;
+  if(t===idx){ const m=nowMinutes(); d.rail.forEach((r,i)=>{ const mm=/^(\d{1,2}):(\d\d)$/.exec(r.t); if(mm && (+mm[1]*60+ +mm[2])<=m) nowI=i; }); }
+  const done=new Set(d.done||[]), ce=canEdit();
+  $('rail').innerHTML=d.rail.map((r,i)=>'<li class="'+(r.move?'move ':'')+(i===nowI?'now ':'')+(done.has(r.id)?'done':'')+'"><span class="h">'+esc(r.t)+'</span><span class="w">'+fmt(r.x)+(r.tm?' <span class="tm">⏰ '+esc(r.tm)+'</span>':'')+'</span>'+(ce?'<button class="ck" data-id="'+esc(r.id)+'" aria-pressed="'+done.has(r.id)+'" aria-label="Mark as done"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5l2.5 2.5L11 4.5"/></svg></button>':'<span></span>')+'</li>').join('');
+  $('notes').hidden=!d.notes; $('notes').innerHTML = d.notes ? '<b>Notes</b>'+fmt(d.notes) : '';
+  $('food').hidden=!d.food; $('food').innerHTML = d.food ? '<b>Food</b>'+fmt(d.food) : '';
+  $('groups').innerHTML=d.groups.filter(g=>g.items.length).map((g,i)=>'<details'+(i===0?' open':'')+'><summary>'+esc(g.h)+'</summary><ul>'+g.items.map(it=>'<li><b>'+fmt(it.n)+'</b> <span>'+fmt(it.d)+'</span></li>').join('')+'</ul></details>').join('');
+  $('edited').textContent = d.updated ? 'Edited '+new Date(d.updated).toLocaleDateString(undefined,{day:'numeric',month:'short'}) : '';
+  renderTicketButton();
+  if(!$('tv').hidden) renderViewer();
+}
+$('rail').addEventListener('click',e=>{
+  const b=e.target.closest('.ck'); if(!b||!canEdit()) return;
+  const d=getDay(idx), set=new Set(d.done||[]), id=b.dataset.id;
+  set.has(id)?set.delete(id):set.add(id);
+  const body=Object.assign({}, overrides[d.date]||{}, {done:[...set]});
+  overrides[d.date]=body;
+  chain = chain.then(()=>db.collection('days').doc(d.date).set(body)).catch(()=>{ flash('Could not save. Check the connection.'); });
+  const y=window.scrollY; render(); window.scrollTo(0,y);
+});
+function go(i){ if(editing||i<0||i>=DAYS.length||i===idx) return; idx=i; window.scrollTo(0,0); render(); snap(); }
+$('prev').onclick=()=>go(idx-1); $('next').onclick=()=>go(idx+1);
+document.addEventListener('keydown',e=>{
+  if(!$('tv').hidden){ if(e.key==='Escape') closeViewer(); if(e.key==='ArrowRight') toSlide(slide+1); if(e.key==='ArrowLeft') toSlide(slide-1); return; }
+  if(!$('add').hidden||!$('card').hidden||!$('fl').hidden){ if(e.key==='Escape'){ $('add').hidden=true; $('card').hidden=true; $('fl').hidden=true; releaseScreen(); } return; }
+  if(e.target.closest && e.target.closest('input,select,textarea')) return;
+  if(e.key==='ArrowRight') go(idx+1); if(e.key==='ArrowLeft') go(idx-1);
+});
+let tx=0,ty=0;
+$('main').addEventListener('touchstart',e=>{ tx=e.touches[0].clientX; ty=e.touches[0].clientY; },{passive:true});
+$('main').addEventListener('touchend',e=>{ if(editing) return; const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty; if(Math.abs(dx)>70 && Math.abs(dx)>Math.abs(dy)*1.6) go(idx+(dx<0?1:-1)); },{passive:true});
+$('h-copy').onclick=async()=>{ const a=$('h-a').textContent; try{ await navigator.clipboard.writeText(a); $('h-copy').textContent='Copied'; setTimeout(()=>{ $('h-copy').textContent='Copy address'; },1500);}catch(e){ const r=document.createRange(); r.selectNodeContents($('h-a')); const s=getSelection(); s.removeAllRanges(); s.addRange(r);} };
+$('card-btn').onclick=()=>{ $('card').hidden=false; lockScreen(); };
+$('card-x').onclick=()=>{ $('card').hidden=true; releaseScreen(); };
+
+/* ---------- edit mode ---------- */
+$('ed-open').onclick=()=>{ editing=JSON.parse(JSON.stringify(getDay(idx))); editing.groups=editing.groups.length?editing.groups:[{h:'Must-visit',items:[]},{h:'Optional',items:[]}]; if(editing.groups.length<2) editing.groups.push({h:'Optional',items:[]}); render(); window.scrollTo(0,0); snap(); };
+function field(id,lab,val,area,ph){ return '<label for="'+id+'">'+lab+(area?'<textarea id="'+id+'" rows="2" placeholder="'+esc(ph||'')+'">'+esc(val)+'</textarea>':'<input type="text" id="'+id+'" value="'+esc(val)+'" placeholder="'+esc(ph||'')+'">')+'</label>'; }
+function renderEdit(){
+  const e=editing, n=e.rail.length;
+  let h='<div class="ed-bar"><span>Editing '+esc(label(e.date))+'</span><button class="tb" data-a="cancel">Cancel</button><button class="btn primary" data-a="save" style="padding:7px 14px">Save</button></div>';
+  h+='<div style="display:grid;gap:10px">'+field('f-start','Start around',e.start)+field('f-title','Title',e.title)+field('f-intro','Summary',e.intro,true)+field('f-tickets','Tickets needed',e.tickets)+'</div>';
+  h+='<div><h3>Stops and how long each takes</h3><div class="ed-list">';
+  e.rail.forEach((r,i)=>{
+    h+='<div class="ed-row" data-i="'+i+'"><input type="text" id="rt-'+r.id+'" data-k="t" value="'+esc(r.t)+'" placeholder="~1 h" aria-label="How long"><textarea id="rx-'+r.id+'" data-k="x" rows="2" aria-label="What to do">'+esc(r.x)+'</textarea><input type="text" id="rm-'+r.id+'" data-k="tm" value="'+esc(r.tm||'')+'" placeholder="⏰ Time note, e.g. closes 16:00 (optional)" aria-label="Time note" style="grid-column:1/-1">'+
+       '<div class="tools"><button class="tb" data-a="up" '+(i===0?'disabled':'')+' aria-label="Move up">↑</button><button class="tb" data-a="down" '+(i===n-1?'disabled':'')+' aria-label="Move down">↓</button><button class="tb" data-a="move" aria-pressed="'+!!r.move+'">Travel</button><button class="tb del" data-a="del">Remove</button></div></div>';
+  });
+  h+='<button class="add-line" data-a="add-stop">+ Add stop</button></div></div>';
+  e.groups.forEach((g,gi)=>{
+    h+='<div><h3>'+esc(g.h)+'</h3><div class="ed-list">';
+    g.items.forEach((it,ii)=>{
+      h+='<div class="ed-row place" data-g="'+gi+'" data-ii="'+ii+'"><input type="text" id="pn-'+gi+'-'+ii+'" data-k="n" value="'+esc(it.n)+'" placeholder="Place" aria-label="Place"><textarea id="pd-'+gi+'-'+ii+'" data-k="d" rows="2" placeholder="Why go" aria-label="Why go">'+esc(it.d)+'</textarea>'+
+         '<div class="tools"><button class="tb" data-a="swap">Move to '+esc(e.groups[1-gi]?e.groups[1-gi].h:'other list')+'</button><button class="tb del" data-a="pdel">Remove</button></div></div>';
+    });
+    h+='<button class="add-line" data-a="add-place" data-g="'+gi+'">+ Add place</button></div></div>';
+  });
+  h+='<div style="display:grid;gap:10px">'+field('f-notes','Notes',e.notes,true,'Anything to remember for this day')+'</div>';
+  h+='<p class="hint">Wrap words in **double stars** to make them bold.</p>';
+  h+='<div class="ed-foot"><button class="tb del" data-a="reset" style="margin-left:0">Reset day to original plan</button><button class="tb del" data-a="reset2" hidden style="margin-left:0">Tap again to reset</button><button class="btn primary" data-a="save">Save</button></div>';
+  $('ed').innerHTML=h;
+}
+$('ed').addEventListener('input',ev=>{
+  const el=ev.target, e=editing; if(!e) return;
+  const top={'f-start':'start','f-title':'title','f-intro':'intro','f-tickets':'tickets','f-food':'food','f-notes':'notes'}[el.id];
+  if(top){ e[top]=el.value; return; }
+  const row=el.closest('.ed-row'); if(!row) return;
+  if(row.dataset.i!==undefined) e.rail[+row.dataset.i][el.dataset.k]=el.value;
+  else e.groups[+row.dataset.g].items[+row.dataset.ii][el.dataset.k]=el.value;
+});
+$('ed').addEventListener('click',async ev=>{
+  const b=ev.target.closest('[data-a]'); if(!b||!editing) return;
+  const a=b.dataset.a, e=editing, row=b.closest('.ed-row'), i=row?+row.dataset.i:-1;
+  const y=window.scrollY;
+  if(a==='cancel'){ editing=null; render(); snap(); return; }
+  if(a==='save'){ const d=editing; editing=null; saveDay(d.date,d); render(); snap(); window.scrollTo(0,0); return; }
+  if(a==='reset'){ b.hidden=true; $('ed').querySelector('[data-a="reset2"]').hidden=false; return; }
+  if(a==='reset2'){ const date=e.date; editing=null; delete overrides[date]; chain=chain.then(()=>db.collection('days').doc(date).delete()).catch(()=>flash('Could not reset. Check the connection.')); render(); snap(); return; }
+  if(a==='up'&&i>0){ [e.rail[i-1],e.rail[i]]=[e.rail[i],e.rail[i-1]]; }
+  else if(a==='down'&&i<e.rail.length-1){ [e.rail[i+1],e.rail[i]]=[e.rail[i],e.rail[i+1]]; }
+  else if(a==='move'){ e.rail[i].move=!e.rail[i].move; }
+  else if(a==='del'){ e.rail.splice(i,1); }
+  else if(a==='add-stop'){ e.rail.push({id:uid(),t:'',x:'',move:false,tm:''}); }
+  else if(a==='sort'){ const key=r=>{ const m=/^(\d{1,2}):(\d\d)$/.exec(r.t); return m? +m[1]*60+ +m[2] : null; }; let last=-1; const k=e.rail.map(r=>{ const v=key(r); if(v!==null) last=v; return v!==null?v:last+0.5; }); e.rail=e.rail.map((r,j)=>[k[j],j,r]).sort((p,q)=>p[0]-q[0]||p[1]-q[1]).map(x=>x[2]); }
+  else if(a==='add-place'){ e.groups[+b.dataset.g].items.push({n:'',d:''}); }
+  else if(a==='swap'||a==='pdel'){ const g=+row.dataset.g, ii=+row.dataset.ii; const [it]=e.groups[g].items.splice(ii,1); if(a==='swap') e.groups[1-g].items.push(it); }
+  else return;
+  renderEdit(); window.scrollTo(0,y);
+  if(a==='add-stop'||a==='add-place'){ const rows=$('ed').querySelectorAll(a==='add-stop'?'.ed-row:not(.place)':'.ed-row.place[data-g="'+b.dataset.g+'"]'); const last=rows[rows.length-1]; last?.querySelector(a==='add-stop'?'input':'input')?.focus(); }
+});
+
+/* ---------- ticket viewer ---------- */
+let wake=null;
+async function lockScreen(){ try{ wake = await navigator.wakeLock?.request('screen'); }catch(e){ wake=null; } }
+function releaseScreen(){ try{ wake?.release(); }catch(e){} wake=null; }
+function openViewer(){ slide=0; $('tv').hidden=false; $('edit').hidden=true; renderViewer(); lockScreen(); }
+function closeViewer(){ $('tv').hidden=true; releaseScreen(); }
+function renderViewer(){
+  const list=dayTickets(DAYS[idx].date);
+  $('tv-empty').hidden = list.length>0; $('slides').hidden = list.length===0;
+  $('tv-empty-s').textContent = 'Tap “+ Add” on the day to add screenshots or PDFs.';
+  $('tv-edit').hidden = !(assets && list.length);
+  const box=$('slides'); box.innerHTML='';
+  list.forEach(t=>{ const s=document.createElement('div'); s.className='slide'; const img=document.createElement('img'); img.alt=t.label||'Ticket'; img.src=blobURL(t.asset); img.onerror=()=>{ s.textContent='This ticket image could not be loaded.'; }; s.appendChild(img); box.appendChild(s); });
+  slide=Math.min(slide,Math.max(0,list.length-1));
+  $('sdots').innerHTML=list.map((_,i)=>'<i class="'+(i===slide?'on':'')+'"></i>').join('');
+  updateViewerLabel(); requestAnimationFrame(()=>{ box.scrollLeft = slide*box.clientWidth; });
+}
+function updateViewerLabel(){
+  const list=dayTickets(DAYS[idx].date), t=list[slide];
+  $('tv-l').textContent = t ? (t.label||'Ticket') : 'Tickets';
+  $('tv-c').textContent = (list.length ? (slide+1)+' of '+list.length+' · ' : '')+label(DAYS[idx].date);
+  [...$('sdots').children].forEach((d,i)=>d.className = i===slide?'on':'');
+  $('s-prev').disabled = slide<=0; $('s-next').disabled = slide>=list.length-1;
+  if(!$('edit').hidden) fillEdit();
+}
+function toSlide(i){ const n=dayTickets(DAYS[idx].date).length; if(i<0||i>=n) return; slide=i; $('slides').scrollTo({left:i*$('slides').clientWidth}); updateViewerLabel(); }
+let st=null; $('slides').addEventListener('scroll',()=>{ clearTimeout(st); st=setTimeout(()=>{ const w=$('slides').clientWidth; const i=Math.round($('slides').scrollLeft/w); if(i!==slide){ slide=i; updateViewerLabel(); } },80); },{passive:true});
+$('tk-open').onclick=openViewer; $('tv-x').onclick=closeViewer;
+$('s-prev').onclick=()=>toSlide(slide-1); $('s-next').onclick=()=>toSlide(slide+1);
+
+/* ---------- edit ---------- */
+function dayOptions(sel, val){ sel.innerHTML=DAYS.map((d,i)=>'<option value="'+d.date+'">Day '+(i+1)+' · '+label(d.date)+'</option>').join(''); sel.value=val; }
+function fillEdit(){ const t=dayTickets(DAYS[idx].date)[slide]; if(!t) return; $('e-label').value=t.label||''; dayOptions($('e-day'),t.day); $('e-del').hidden=false; $('e-del2').hidden=true; }
+$('tv-edit').onclick=()=>{ $('edit').hidden=!$('edit').hidden; if(!$('edit').hidden) fillEdit(); };
+$('e-save').onclick=async()=>{
+  const t=dayTickets(DAYS[idx].date)[slide]; if(!t||!db) return;
+  const label=$('e-label').value.trim()||'Ticket', day=$('e-day').value;
+  try{ await db.collection('tickets').doc(t.id).update({label, day}); $('edit').hidden=true; if(day!==t.day) slide=Math.max(0,slide-1); }catch(e){ $('e-save').textContent='Could not save'; setTimeout(()=>$('e-save').textContent='Save',1800); }
+};
+$('e-del').onclick=()=>{ $('e-del').hidden=true; $('e-del2').hidden=false; };
+$('e-del2').onclick=async()=>{
+  const t=dayTickets(DAYS[idx].date)[slide]; if(!t||!db) return;
+  try{ await db.collection('tickets').doc(t.id).delete(); try{ await assets?.delete(t.asset); }catch(e){} $('edit').hidden=true; slide=Math.max(0,slide-1); }catch(e){ $('e-del2').textContent='Could not delete'; }
+};
+
+/* ---------- add tickets ---------- */
+$('tk-add').onclick=()=>{ dayOptions($('a-day'),DAYS[idx].date); $('a-msg').textContent='PDFs are turned into one image per page.'; $('add-form').reset(); dayOptions($('a-day'),DAYS[idx].date); $('add').hidden=false; $('a-label').focus(); };
+$('a-cancel').onclick=()=>{ $('add').hidden=true; };
+const OK_TYPES=['image/png','image/jpeg','image/gif','image/webp'];
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('load')); document.head.appendChild(s); }); }
+let pdfReady=null;
+function pdfjs(){ if(!pdfReady) pdfReady = loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js').then(()=>loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js')).then(()=>window.pdfjsLib); return pdfReady; }
+async function pdfToImages(file){
+  const lib=await pdfjs(); const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise; const out=[];
+  for(let p=1;p<=doc.numPages;p++){ const page=await doc.getPage(p); const vp=page.getViewport({scale:3}); const c=document.createElement('canvas'); c.width=vp.width; c.height=vp.height; const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); await page.render({canvasContext:ctx,viewport:vp}).promise; out.push(await new Promise(r=>c.toBlob(r,'image/png'))); }
+  return out;
+}
+async function toUploadable(file){
+  if(OK_TYPES.includes(file.type)) return [file];
+  if(file.type==='application/pdf'||/\.pdf$/i.test(file.name)) return pdfToImages(file);
+  const bmp=await createImageBitmap(file); const c=document.createElement('canvas'); c.width=bmp.width; c.height=bmp.height; c.getContext('2d').drawImage(bmp,0,0);
+  return [await new Promise(r=>c.toBlob(r,'image/jpeg',0.95))];
+}
+$('add-form').addEventListener('submit',async e=>{
+  e.preventDefault(); if(!assets||!db) return;
+  const files=[...$('a-file').files], base=$('a-label').value.trim()||'Ticket', day=$('a-day').value;
+  $('a-go').disabled=true; let made=0;
+  try{
+    const blobs=[]; for(const f of files){ $('a-msg').textContent='Preparing '+f.name+'…'; for(const b of await toUploadable(f)) blobs.push(b); }
+    for(let i=0;i<blobs.length;i++){
+      $('a-msg').textContent='Uploading '+(i+1)+' of '+blobs.length+'…';
+      const r=await assets.upload(blobs[i]);
+      await db.collection('tickets').add({day, label: blobs.length>1 ? base+' ('+(i+1)+'/'+blobs.length+')' : base, asset:r.id, order:Date.now()+i});
+      made++;
+    }
+    $('add').hidden=true;
+  }catch(err){
+    const c=err&&err.code;
+    $('a-msg').textContent = c==='too_large' ? 'That file is over 20 MB. Try a screenshot instead.' : c==='unsupported_type' ? 'That file type is not supported. Use a screenshot, photo or PDF.' : c==='load' || (err&&err.message==='load') ? 'The PDF reader could not load. Check the connection, or add a screenshot instead.' : 'Upload stopped'+(made?' after '+made+' image(s)':'')+'. Check the connection and try again.';
+  }finally{ $('a-go').disabled=false; }
+});
+
+
+/* ---------- checklists (food, coffee) ---------- */
+const LISTS={
+  food:{title:'🍜 Food to try', sub:'From your teacher’s notes. Tick things off as you try them, or add your own.', sections:['Dishes','Desserts','Drinks','Restaurants'], ph:'Add a dish or place'},
+  coffee:{title:'☕ Coffee places', sub:'Add coffee shops you want to try in each city.', sections:['Tokyo','Kyoto','Osaka'], ph:'Add a coffee shop'}
+};
+let listItems=[], openList=null, listLoaded=false;
+function renderList(){
+  const L=LISTS[openList]; if(!L) return;
+  $('fl-title').textContent=L.title; $('fl-sub').textContent=L.sub;
+  const box=$('fl-list'); box.innerHTML='';
+  if(!db){ const p=document.createElement('p'); p.className='msg'; p.textContent='Lists show up inside Claude.'; box.appendChild(p); return; }
+  if(!listLoaded){ const p=document.createElement('p'); p.className='msg'; p.textContent='Loading…'; box.appendChild(p); }
+  const ce=canEdit();
+  L.sections.forEach(sec=>{
+    const items=listItems.filter(i=>i.list===openList&&i.s===sec).sort((x,y)=>(x.order||0)-(y.order||0));
+    const h=document.createElement('div'); h.className='fl-sec'; h.textContent=sec+(items.length?' · '+items.filter(i=>i.done).length+'/'+items.length:''); box.appendChild(h);
+    if(!items.length){ const e=document.createElement('p'); e.className='msg'; e.style.padding='4px 0 8px'; e.textContent= openList==='coffee' ? 'Nothing here yet.' : 'Nothing in this list.'; box.appendChild(e); }
+    items.forEach(it=>{
+      const row=document.createElement('div'); row.className='fl-item'+(it.done?' on':'');
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.id='li-'+it.id; cb.checked=!!it.done; cb.disabled=!ce;
+      cb.onchange=()=>{ db.collection('listItems').doc(it.id).update({done:cb.checked}).catch(()=>{ cb.checked=!cb.checked; }); };
+      const txt=document.createElement('label'); txt.htmlFor=cb.id; txt.style.flex='1'; txt.style.minWidth='0';
+      const b=document.createElement('b'); b.textContent=it.n; txt.appendChild(b);
+      if(it.d){ const sp=document.createElement('span'); sp.textContent=it.d; txt.appendChild(sp); }
+      row.appendChild(cb); row.appendChild(txt);
+      if(ce){ const x=document.createElement('button'); x.className='tb del'; x.textContent='Remove'; x.style.marginLeft='0';
+        x.onclick=()=>{ if(x.dataset.sure){ db.collection('listItems').doc(it.id).delete().catch(()=>{}); } else { x.dataset.sure='1'; x.textContent='Tap again'; setTimeout(()=>{ if(x.isConnected){ delete x.dataset.sure; x.textContent='Remove'; } },3000); } };
+        row.appendChild(x); }
+      box.appendChild(row);
+    });
+    if(ce){
+      const f=document.createElement('form'); f.className='fl-add';
+      const key=openList+'-'+sec.toLowerCase();
+      f.innerHTML='<input type="text" id="add-n-'+key+'" maxlength="80" placeholder="'+esc(L.ph)+'" aria-label="Name" required><input type="text" id="add-d-'+key+'" maxlength="140" placeholder="Note (optional)" aria-label="Note"><button class="tb" type="submit">Add</button>';
+      f.onsubmit=async e=>{ e.preventDefault(); const n=f.querySelector('#add-n-'+key).value.trim(); if(!n) return; const d=f.querySelector('#add-d-'+key).value.trim();
+        const btn=f.querySelector('button'); btn.disabled=true;
+        try{ await db.collection('listItems').add({list:openList,s:sec,n,d,done:false,order:Date.now()}); }catch(err){ btn.textContent='Could not add'; }
+        btn.disabled=false; };
+      box.appendChild(f);
+    }
+  });
+}
+function openListView(k){ openList=k; renderList(); $('fl').hidden=false; }
+$('food-btn').onclick=()=>openListView('food');
+$('coffee-btn').onclick=()=>openListView('coffee');
+$('fl-x').onclick=()=>{ $('fl').hidden=true; openList=null; };
+/* ---------- data ---------- */
+const SEED_FOOD=[['Dishes','Tonkotsu ramen','Pork-bone broth, Hakata style'],['Dishes','Tori paitan ramen','Creamy chicken broth'],['Dishes','Soba','Buckwheat noodles, cold or hot, often with tempura'],['Dishes','Kaisendon','Rice bowl of raw seafood: hotate, ikura, uni, ika, ebi, maguro'],['Dishes','Sashimi teishoku','Sashimi set meal with rice and miso soup'],['Dishes','Sashimi moriawase','Assorted sashimi platter'],['Dishes','Nigiri sushi','Ask for “wasabi nashi” if you want it without wasabi'],['Dishes','Kyuri-maki','Cucumber roll'],['Dishes','Yakitori','Grilled chicken skewers'],['Dishes','Yakiniku','Grill-your-own meat, Japanese BBQ'],['Dishes','An izakaya night','Japanese pub with small plates'],['Desserts','Yaki-imo','Roasted sweet potato, often from street trucks in winter'],['Desserts','Sweet-potato desserts',''],['Desserts','Chestnut desserts','Marron Mont Blanc and parfaits'],['Drinks','Sake, cold and warm','Reishu (cold) and atsukan (warm), a small glass first'],['Drinks','Matcha in Kyoto','To give good matcha a fair try'],['Restaurants','Ichiran','Tonkotsu ramen with solo booths, open 24 h, many branches'],['Restaurants','Ippudo Ginza Higashi','Hakata tonkotsu ramen, Ginza'],['Restaurants','Ginza Kagari','Tori paitan ramen, Ginza (expect a queue)'],['Restaurants','Ginza Sanada SIX','Soba and tempura, inside Ginza Six'],['Restaurants','Tsukiji Outer Market','Street food and seafood breakfast']];
+async function connect(){
+  try{ await LS.init(); }catch(e){ $('tk-sub').textContent='This browser can’t save data. Open the app in Safari or Chrome.'; return; }
+  db=LS.db; assets=LS.assets; $('tk-add').hidden=false;
+  const meta=await db.doc('meta/app').get();
+  if(!meta.exists){ for(let i=0;i<SEED_FOOD.length;i++){ const [s,n,d]=SEED_FOOD[i]; await db.collection('listItems').doc('f'+String(i+1).padStart(2,'0')).set({list:'food',s,n,d,done:false,order:i+1}); } await db.doc('meta/app').set({seeded:1}); }
+  db.collection('tickets').onSnapshot(snap=>{ tickets=snap.docs.map(d=>Object.assign({id:d.id},d.data())); renderTicketButton(); if(!$('tv').hidden) renderViewer(); });
+  db.collection('hotels').onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>{ o[d.id]=d.data(); }); HOTELS=o; if(!editing){ const y=window.scrollY; render(); window.scrollTo(0,y); } });
+  db.collection('days').onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>{ o[d.id]=d.data(); }); overrides=o; if(!editing){ const y=window.scrollY; render(); window.scrollTo(0,y); } });
+  db.collection('listItems').onSnapshot(s=>{ listItems=s.docs.map(d=>Object.assign({id:d.id},d.data())); listLoaded=true; if(!$('fl').hidden){ const ae=document.activeElement, id=ae&&ae.id; renderList(); if(id&&$(id)&&ae.tagName==='INPUT'&&ae.type==='text'){ $(id).value=''; $(id).focus(); } } });
+  render();
+}
+/* ---------- hotels ---------- */
+let hsCity=null;
+$('h-edit').onclick=()=>{ hsCity=hotelFor(getDay(idx)); if(!hsCity) return; const H=HOTELS[hsCity]||{}; $('hs-t').textContent=CITY[hsCity]+' hotel'; $('hs-n').value=H.n||''; $('hs-a').value=H.a||''; $('hs').hidden=false; $('hs-n').focus(); };
+$('hs-x').onclick=()=>{ $('hs').hidden=true; };
+$('hs-form').addEventListener('submit',async e=>{ e.preventDefault(); if(!db||!hsCity) return; await db.collection('hotels').doc(hsCity).set({n:$('hs-n').value.trim(),a:$('hs-a').value.trim()}); $('hs').hidden=true; });
+/* ---------- backup: export / import ---------- */
+$('bk-btn').onclick=()=>{ $('bk').hidden=false; $('bk-msg').textContent=''; };
+$('bk-x').onclick=()=>{ $('bk').hidden=true; };
+$('bk-export').onclick=async()=>{
+  $('bk-msg').textContent='Preparing…';
+  try{ const data=await LS.exportAll(); const blob=new Blob([JSON.stringify(data)],{type:'application/json'}); const name='japan-days-backup-'+localISO(new Date())+'.json';
+    const file=new File([blob],name,{type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:'Japan Days backup'}); $('bk-msg').textContent='Shared.'; }
+    else { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); $('bk-msg').textContent='Saved as '+name+'.'; }
+  }catch(e){ if(e&&e.name==='AbortError'){ $('bk-msg').textContent=''; } else $('bk-msg').textContent='Could not export.'; }
+};
+$('bk-file').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return; $('bk-msg').textContent='Importing…';
+  try{ await LS.importAll(JSON.parse(await f.text())); $('bk-msg').textContent='Imported. Tickets, edits and lists are now on this device.'; }catch(err){ $('bk-msg').textContent='That file is not a Japan Days backup.'; }
+  e.target.value='';
+};
+
+/* ---------- start ---------- */
+function snap(){}
+function start(){ render(); connect(); }
+start();
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }); }
+
+// keep "today" and the now-marker fresh if the app stays open
+let lastKey='';
+function liveKey(){ const d=getDay(idx); let k=localISO(new Date())+'|'; if(todayIndex()===idx){ const m=nowMinutes(); d.rail.forEach((r,i)=>{ const mm=/^(\d{1,2}):(\d\d)$/.exec(r.t); if(mm && (+mm[1]*60+ +mm[2])<=m) k+=i+','; }); } return k; }
+setInterval(()=>{ const k=liveKey(); if(k!==lastKey && $('tv').hidden && !editing){ lastKey=k; const keep=window.scrollY; render(); window.scrollTo(0,keep); } }, 60000);
+}
+</script>
+
+<script>boot(JSON.parse(document.getElementById("plan-data").textContent));</script>
+</body>
+</html>
